@@ -1,0 +1,32 @@
+[
+  {
+    "id": 1,
+    "name": "Rahul Sharma",
+    "role": "Developer"
+  },
+  {
+    "id": 2,
+    "name": "Priya Sharma",
+    "role": "Designer"
+  },
+  {
+    "id": 3,
+    "name": "Aman Gupta",
+    "role": "Manager"
+  },
+  {
+    "id": 4,
+    "name": "Neha Singh",
+    "role": "Tester"
+  },
+  {
+    "name": "Saksham",
+    "role": "Frontend Developer",
+    "id": 6
+  },
+  {
+    "name": "Rohan",
+    "role": "Backend Developer",
+    "id": 7
+  }
+]
