@@ -23,7 +23,7 @@ exports.registerUser = async (req, res) => {
         const userExist = await User.findOne({ email }) // find user by id
         if (userExist) {
             return res.status(400).json({
-                success: true,
+                success: false,
                 message: "User Already Registered with this Email!!!"
             })
         }
@@ -56,11 +56,10 @@ exports.loginUser = async (req, res) => {
         const { email, password } = req.body
 
         if (!email || !password) {
-            return res.json(400).json({ success: false, message: "Please Provide email and password" })
+            return res.status(400).json({ success: false, message: "Please Provide email and password" })
         }
 
         // Find User & Explicity select password -> schema select false
-
         const user = await User.findOne({ email }).select("+password")
 
         if (!user) {
@@ -92,7 +91,7 @@ exports.loginUser = async (req, res) => {
 
 
 // 3. get current logged in user -> 
-exports.getMe = async (res, res) => {
+exports.getMe = async (req, res) => {
     res.status(200).json({
         success: true,
         user: req.user

@@ -6,7 +6,7 @@ exports.getAllUsers = async (req, res) => {
     try {
 
         const { role } = req.query
-        const { queryFilter } = role ? { role: new RegExp(role, "i") } : {}
+        const  queryFilter = role ? { role: new RegExp(role, "i") } : {}
 
         // fetch users from db
         const users = await User.find(queryFilter).sort({ createdAt: -1 })
@@ -64,7 +64,7 @@ exports.getUserById = async (req, res) => {
     }
     catch (error) {
         // 
-        if (error.kind === "ObjectID") {
+        if (error.kind === "ObjectId") {
             return res.status(400).json({ success: false, message: "Invalid User ID Format" })
         }
         res.status(500).json({ success: false, message: error.message })

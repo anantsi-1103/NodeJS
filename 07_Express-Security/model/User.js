@@ -19,17 +19,17 @@ const userSchema = new mongoose.Schema(
                 "Please enter a valid Email Address"]
 
         },
-        password:{
-            type : String,
+        password: {
+            type: String,
             required: [true, "Password is Required"],
-            minLength : [6, "Password must be at least 6 Characters "],
-            select : false // automatically hides password from get queries
+            minLength: [6, "Password must be at least 6 Characters "],
+            select: false // automatically hides password from get queries
         },
         role: {
             type: String,
             required: [true, "Role is Required"],
             enum: ["Developer", "Designer",
-                "Manager", "Intern"
+                "Manager", "Intern", "Admin"
             ],
 
             default: "Developer",
@@ -37,7 +37,7 @@ const userSchema = new mongoose.Schema(
 
 
         }
-        
+
 
     },
     {
@@ -46,20 +46,20 @@ const userSchema = new mongoose.Schema(
 )
 
 // Pre-Save Hook -> automatically hash password before saving
-userSchema.pre("save", async function(next){
+userSchema.pre("save", async function (next) {
     // only hash passsword 
-    if(!this.isModified("password")){
-        return next();
+    if (!this.isModified("password")) {
+        return;
     }
 
     const salt = await bcrypt.genSalt(10)
     this.password = await bcrypt.hash(this.password, salt);
-    next();
+
 })
 
 
 //  Custom method -> Compare entered password with hashed password
-userSchema.methods.matchPassword = async function (enterPassword){
+userSchema.methods.matchPassword = async function (enterPassword) {
     return await bcrypt.compare(enterPassword, this.password)
 }
 
