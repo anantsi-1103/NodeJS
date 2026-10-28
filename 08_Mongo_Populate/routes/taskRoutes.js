@@ -6,11 +6,16 @@ const {
 
     createTask,
     getAllTask,
-    getTaskById
+    getTaskById,
+    updateTask,
+    deleteTask
 
 } = require("../controllers/taskController")
 
+const { protect } = require("../middlewares/authMiddleware")
 // const {protect} = 
+
+router.use(protect)
 
 router.route("/")
     .get(getAllTask)
@@ -19,5 +24,7 @@ router.route("/")
 
 router.route("/:id")
     .get(getTaskById)
+    .put(updateTask)
+    .delete(deleteTask)
 
 module.exports = router

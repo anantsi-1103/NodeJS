@@ -2,6 +2,7 @@ const express = require("express");
 const logger = require("./middlewares/logger");
 const userRoutes = require("./routes/userRoutes");
 const taskRoutes = require("./routes/taskRoutes")
+const authRoutes = require("./routes/authRoutes")
 
 const app = express();
 
@@ -12,6 +13,7 @@ app.use(logger);         // Custom logger middleware
 // 2. MOUNT ROUTES
 app.use("/api/users", userRoutes);
 app.use("/api/tasks",taskRoutes)
+app.use("/api/auth",authRoutes)
 
 // 3. 404 CATCH-ALL ROUTE
 app.use((req, res) => {

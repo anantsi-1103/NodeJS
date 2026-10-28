@@ -5,23 +5,23 @@ const User = require("../model/User");
 exports.getAllUsers = async (req, res) => {
     try {
 
-        const { role } = req.query
-        const { queryFilter } = role ? { role: new RegExp(role, "i") } : {}
+        const { role } = req.query;
+        const queryFilter = role ? { role: new RegExp(role, "i") } : {};
 
         // fetch users from db
-        const users = await User.find(queryFilter).sort({ createdAt: -1 })
+        const users = await User.find(queryFilter).sort({ createdAt: -1 });
 
         res.status(200).json({
             success: true,
             count: users.length,
             data: users
-        })
+        });
 
     }
     catch (error) {
         res.status(500).json({
             success: false, message: error.message
-        })
+        });
     }
 };
 
@@ -48,7 +48,7 @@ exports.createUser = async (req, res) => {
     }
 }
 
-// 2. GET SINGLE USER BY ID (:id parameter)
+// 3. GET SINGLE USER BY ID (:id parameter)
 exports.getUserById = async (req, res) => {
     try {
 
@@ -63,8 +63,7 @@ exports.getUserById = async (req, res) => {
         res.status(200).json({ success: true, data: user })
     }
     catch (error) {
-        // 
-        if (error.kind === "ObjectID") {
+        if (error.name === "CastError" || error.kind === "ObjectId") {
             return res.status(400).json({ success: false, message: "Invalid User ID Format" })
         }
         res.status(500).json({ success: false, message: error.message })
@@ -92,6 +91,9 @@ exports.updateUser = async (req, res) => {
     }
 
     catch (error) {
+        if (error.name === "CastError" || error.kind === "ObjectId") {
+            return res.status(400).json({ success: false, message: "Invalid User ID Format" })
+        }
         res.status(500).json({ success: false, message: error.message })
     }
 
@@ -111,6 +113,9 @@ exports.deleteUser = async (req, res) => {
         res.status(200).json({ success: true, message: "User DELETED" })
     }
     catch (error) {
+        if (error.name === "CastError" || error.kind === "ObjectId") {
+            return res.status(400).json({ success: false, message: "Invalid User ID Format" })
+        }
         res.status(500).json({ success: false, message: error.message })
     }
 };
