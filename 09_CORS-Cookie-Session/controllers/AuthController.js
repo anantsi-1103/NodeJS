@@ -1,17 +1,38 @@
 const User = require("../model/User");
 const jwt = require("jsonwebtoken")
 
-// helper function to generate jwt token
-const generateToken = (userID, role) => {
-    return jwt.sign(
+// helper function to generate jwt token + Send Cookie
+const sendTokenResponse = (user, statusCode, res) => {
+    const token = jwt.sign(
         {
-            id: userID, role: role  // payload
+            id: user._id, role: user.role  // payload
         },
         process.env.JWT_SECRET || process.env.JWT_Secret, // secret key
         {
             expiresIn: process.env.JWT_EXPIRE || "30d"
         }
     )
+
+    // Cookie Option
+    const cookieOption = {
+        expires: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production"
+    }
+
+    //  Cookie Attach krni hai Response and Return
+    res.status(statusCode)
+        .cookie("token", token, cookieOption)// attach set cookie header
+        .json({
+            success: true,
+            token, // return in json
+            user: {
+                id: user._id,
+                name: user.name,
+                email: user.email,
+                role: user.role
+            }
+        })
 }
 
 // 1. Register User -> 
@@ -31,16 +52,8 @@ exports.registerUser = async (req, res) => {
         const user = await User.create({ name, email, password, role });
 
         // generate token
+        sendTokenResponse(user, 201, res)
 
-        const token = generateToken(user._id, user.role)
-
-
-        res.status(201).json({
-            success: true,
-            message: "User Registered Successfully!!!",
-            token,
-            user: { id: user._id, name: user.name, email: user.email, role: user.role }
-        });
     }
     catch (error) {
         res.status(400).json({
@@ -73,14 +86,7 @@ exports.loginUser = async (req, res) => {
             return res.status(401).json({ success: false, message: "Invalid Email and Password" })
         }
 
-        const token = generateToken(user._id, user.role);
-
-        res.status(200).json({
-            success: true,
-            message: "Login Successfully",
-            token,
-            user: { id: user._id, name: user.name, email: user.email, role: user.role }
-        })
+        sendTokenResponse(user, 200, res);
 
 
     }
@@ -95,5 +101,17 @@ exports.getMe = async (req, res) => {
     res.status(200).json({
         success: true,
         user: req.user
+    })
+}
+
+// 4. Logout
+exports.logoutUser = (req,res)=>{
+    res.cookie("token", "none",{
+        expires : new Date(Date.now() + 5 * 1000),
+        httpOnly : true
+    })
+    res.status(200).json({
+        success: true,
+        message : "Logout Successfully, Cookie Cleared"
     })
 }
