@@ -13,11 +13,14 @@ app.use(express.json())
 app.use(express.urlencoded({extended:true}))
 
 
+// CSS , Images
+app.use(express.static(path.join(__dirname, "public")))
+app.use("/uploads", express.static(path.join(__dirname, "uploads")))
+
 
 // 2. MOUNT ROUTES
-app.use("/api/users", userRoutes);
-app.use("/api/tasks", taskRoutes)
-app.use("/api/auth", authRoutes)
+const viewRoutes = require("./routes/viewRoutes")
+app.use("/", viewRoutes)
 
 // 3. 404 CATCH-ALL ROUTE
 app.use((req, res) => {

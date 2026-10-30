@@ -1,0 +1,44 @@
+
+<%- include('partials/header') %>
+<%- include('partials/navbar') %>
+
+
+
+<div class="container" style="max-width: 600px;">
+    <div class="card shadow-sm p-4">
+        <h3 class="mb-3">Add New User</h3>
+        
+        <!-- Standard HTML Form submitting POST request -->
+        <form action="/add-user" method="POST">
+            <div class="mb-3">
+                <label class="form-label">Full Name</label>
+                <input type="text" name="name" class="form-control" placeholder="Enter name" required>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Email Address</label>
+                <input type="email" name="email" class="form-control" placeholder="Enter email" required>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Password</label>
+                <input type="password" name="password" class="form-control" placeholder="Enter password" required>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Role</label>
+                <select name="role" class="form-select">
+                    <option value="User">User</option>
+                    <option value="Developer">Developer</option>
+                    <option value="Admin">Admin</option>
+                </select>
+            </div>
+            <button type="submit" class="btn btn-primary w-100">Submit User</button>
+        </form>
+    </div>
+</div>
+
+
+
+
+
+
+
+<%- include('partials/footer') %>
