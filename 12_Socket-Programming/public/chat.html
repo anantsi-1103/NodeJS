@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Realtime Chat | Socket. IO</title>
+    <!-- Bootstrap CSS for styling classes used in the HTML -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+
+<body>
+    <style>
+        body {
+            background-color: #f0f2f5;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .chat-container {
+            max-width: 650px;
+            margin: 40px auto;
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            overflow: hidden;
+        }
+
+        .chat-header {
+            background: #0d6efd;
+            color: white;
+            padding: 16px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .chat-messages {
+            height: 420px;
+            overflow-y: auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            background: #fafafa;
+        }
+
+        .message-bubble {
+            max-width: 75%;
+            padding: 10px 14px;
+            border-radius: 14px;
+            position: relative;
+            word-wrap: break-word;
+        }
+
+        .message-incoming {
+            align-self: flex-start;
+            background: #e9ecef;
+            color: #212529;
+            border-bottom-left-radius: 2px;
+        }
+
+        .message-outgoing {
+            align-self: flex-end;
+            background: #0d6efd;
+            color: white;
+            border-bottom-right-radius: 2px;
+        }
+
+        .message-meta {
+            font-size: 0.72rem;
+            opacity: 0.75;
+            margin-top: 4px;
+            display: flex;
+            justify-content: flex-end;
+            gap: 6px;
+        }
+
+        .system-bubble {
+            align-self: center;
+            background: #e2e3e5;
+            color: #6c757d;
+            font-size: 0.8rem;
+            padding: 4px 12px;
+            border-radius: 20px;
+        }
+
+        .typing-indicator {
+            font-size: 0.82rem;
+            color: #6c757d;
+            font-style: italic;
+            min-height: 22px;
+            padding: 0 20px 4px 20px;
+        }
+
+        .chat-input-area {
+            padding: 14px 20px;
+            background: white;
+            border-top: 1px solid #dee2e6;
+        }
+    </style>
+
+    <div class="chat-container">
+        <!-- Header -->
+        <div class="chat-header">
+            <div>
+                <h5 class="mb-0">Socket.io Live Room</h5>
+                <small id="user-display">Connecting...</small>
+            </div>
+            <span class="badge bg-success" id="online-badge">Online: 1</span>
+        </div>
+        <!-- Messages Container -->
+        <div class="chat-messages" id="messages-box">
+            <!-- Dynamic message bubbles appear here -->
+        </div>
+        <!-- Live Typing Indicator -->
+        <div class="typing-indicator" id="typing-box"></div>
+        <!-- Input Form -->
+        <div class="chat-input-area">
+            <form id="chat-form" class="d-flex gap-2">
+                <input type="text" id="message-input" class="form-control" placeholder="Type a message..."
+                    autocomplete="off" required>
+                <button type="submit" class="btn btn-primary px-4">Send</button>
+            </form>
+        </div>
+    </div>
+
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        // 1. Initialize Socket.IO connection
+        const socket = io();
+
+        // 2. Ask user for username
+        const username = prompt("Enter your username:") || `User_${Math.floor(Math.random() * 1000)}`;
+
+        // DOM elements
+        const messagesBox = document.getElementById("messages-box");
+        const typingBox = document.getElementById("typing-box");
+        const userDisplay = document.getElementById("user-display");
+        const onlineBadge = document.getElementById("online-badge");
+        const chatForm = document.getElementById("chat-form");
+        const messageInput = document.getElementById("message-input");
+
+
+        socket.emit("userjoined", username)
+
+
+
+        // Display current user
+        userDisplay.textContent = `Logged in as: ${username}`;
+
+        function scrollToBottom() {
+            messagesBox.scrollTop = messagesBox.scrollHeight;
+        }
+
+        // 3. Online user count update
+        socket.on("userCountUpdate", (count) => {
+            onlineBadge.textContent = `Online: ${count}`;
+        });
+
+        // 4. System notifications (welcome, user joined, user left)
+        socket.on("systemMessage", (message) => {
+            const systemDiv = document.createElement("div");
+            systemDiv.className = "system-bubble";
+            systemDiv.textContent = message;
+            messagesBox.appendChild(systemDiv);
+            scrollToBottom();
+        });
+
+        // 5. Send chat message
+        chatForm.addEventListener("submit", (e) => {
+            e.preventDefault();
+            const message = messageInput.value.trim();
+            if (!message) return;
+
+            // Emit to server (matches socket.on("sendMessage") in server.js)
+            socket.emit("sendMessage", { username, message });
+
+            // Stop typing status
+            socket.emit("stopTyping", username);
+
+            messageInput.value = "";
+            messageInput.focus();
+        });
+
+        // 6. Receive incoming chat messages
+        socket.on("receiveMessage", (data) => {
+            const isMe = data.username === username;
+
+            const bubble = document.createElement("div");
+            bubble.className = `message-bubble ${isMe ? "message-outgoing" : "message-incoming"}`;
+
+            bubble.innerHTML = `
+                <div><strong>${isMe ? "You" : data.username}</strong></div>
+                <div>${data.message}</div>
+                <div class="message-meta">${data.time}</div>
+            `;
+
+            messagesBox.appendChild(bubble);
+            scrollToBottom();
+        });
+
+        // 7. Typing status handler
+        let typingTimeout;
+        messageInput.addEventListener("input", () => {
+            socket.emit("typing", username);
+
+            clearTimeout(typingTimeout);
+            typingTimeout = setTimeout(() => {
+                socket.emit("stopTyping", username);
+            }, 1000);
+        });
+
+        // Listen for typing events from other users
+        socket.on("userTyping", (typingUser) => {
+            typingBox.textContent = `${typingUser} is typing...`;
+        });
+
+        socket.on("user Stopped Typing", () => {
+            typingBox.textContent = "";
+        });
+    </script>
+</body>
+
+</html>
