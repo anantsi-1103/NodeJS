@@ -38,12 +38,6 @@ io.on("connection", (socket) => {
     // Broadcast updated online user count to all clients
     io.emit("userCountUpdate", onlineUserCount);
 
-    // Welcome the newly Connected User count to all
-    socket.emit("systemMessage", "Welcome to the Realtime Chat Server!!");
-
-    // Notify All Other Users that someone joined
-    socket.broadcast.emit("systemMessage", "A New User Joined a Chat");
-
     // EventA : Listen for incoming chat message 
     socket.on("sendMessage", (data) => {
         const payload = {
@@ -73,8 +67,8 @@ io.on("connection", (socket) => {
         console.log(`User Disconnected : ${socket.id}, (Online User Count : ${onlineUserCount})`)
 
         io.emit("userCountUpdate", onlineUserCount)
-        if(socket.username){
-            io.emit(`systemMessage, ${socket.username} left the Chat`)
+        if (socket.username) {
+            io.emit("systemMessage", `${socket.username} left the chat.`);
         }
     })
 
