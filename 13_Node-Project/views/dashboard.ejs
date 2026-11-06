@@ -1,0 +1,170 @@
+<%- include ('partials/header') %>
+
+    <%- include ('partials/navbar') %>
+
+        <div class="container">
+            <div class="row g-4">
+                <!-- Left Column: Add Task Form -->
+                <div class="col-md-4">
+                    <div class="card shadow-sm p-3">
+                        <h5 class="fw-bold mb-3">➕ Add New Task</h5>
+                        <form id="create-task-form">
+                            <div class="mb-3">
+                                <label class="form-label">Task Title</label>
+                                <input type="text" id="task-title" class="form-control"
+                                    placeholder="e.g. Build Payment Gateway" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Priority</label>
+                                <select id="task-priority" class="form-select">
+                                    <option value="Low">Low</option>
+                                    <option value="Medium" selected>Medium</option>
+                                    <option value="High">High</option>
+                                </select>
+                            </div>
+                            <button type="submit" class="btn btn-primary w-100">Create Task</button>
+                        </form>
+                    </div>
+                </div>
+                <!-- Right Column: Live Real-Time Task Feed -->
+                <div class="col-md-8">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h4 class="fw-bold mb-0">Live Team Tasks</h4>
+                        <span class="badge bg-success" id="realtime-status">⚡ Live Sync Active</span>
+                    </div>
+                    <div id="tasks-container" class="d-flex flex-column gap-3">
+                        <% tasks.forEach(task=> { %>
+                            <div class="card task-card p-3 shadow-sm" id="task-<%= task._id %>">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <h5 class="mb-1">
+                                            <%= task.title %>
+                                        </h5>
+                                        <span class="badge bg-secondary">
+                                            <%= task.priority %> Priority
+                                        </span>
+                                        <span class="badge bg-info text-dark" id="status-badge-<%= task._id %>">
+                                            <%= task.status %>
+                                        </span>
+                                    </div>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <img src="<%= task.user ? task.user.avatar : '/uploads/default-avatar.png' %>"
+                                            class="avatar-img" title="<%= task.user ? task.user.name : 'Unknown' %>">
+                                        <small class="text-muted">
+                                            <%= task.user ? task.user.name : "Member" %>
+                                        </small>
+                                    </div>
+                                </div>
+                                <div class="mt-3 d-flex justify-content-between align-items-center border-top pt-2">
+                                    <select class="form-select form-select-sm w-auto"
+                                        onchange="updateStatus('<%= task._id %>', this.value)">
+                                        <option value="Pending" <%=task.status==='Pending' ? 'selected' : '' %>>Pending
+                                        </option>
+                                        <option value="In Progress" <%=task.status==='In Progress' ? 'selected' : '' %>
+                                            >In Progress</option>
+                                        <option value="Completed" <%=task.status==='Completed' ? 'selected' : '' %>
+                                            >Completed</option>
+                                    </select>
+                                    <% if (user.role==="Admin" ) { %>
+                                        <button class="btn btn-outline-danger btn-sm"
+                                            onclick="deleteTask('<%= task._id %>')">Delete</button>
+                                        <% } %>
+                                </div>
+                            </div>
+                            <% }) %>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+        <%- include ('partials/footer') %>
+
+
+            <!-- Client Side Socket.io real time script-->
+
+            <script>
+
+                const socket = io();
+
+                const taskContainer = document.getElementById("tasks-container")
+
+                // 1. Submit New Task Vai Fetch
+
+                document.getElementById("create-task-form").addEventListener('submit', async (e) => {
+                    e.preventDefault();
+
+                    const title = document.getElementById("task-title").value;
+                    const priority = document.getElementById("task-priority").value
+
+
+                    await fetch("/api/tasks", {
+                        method: "POST",
+                        headers: { "Content-type": "application/json" },
+                        body: JSON.stringify({ title, priority })
+                    });
+
+                    document.getElementById("task-title").value = "";
+                })
+
+                // 2. Change Status via fetch
+                async function updateStatus(id, status) {
+                    await fetch(`/api/tasks/${id}/status`, {
+                        method: "PUT",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ status })
+                    });
+                }
+
+                // 3. Delete Task via fetch (Admin only)
+                async function deleteTask(id) {
+                    if (!confirm("Are you sure?")) return;
+                    const res = await fetch(`/api/tasks/${id}`, { method: "DELETE" });
+                    if (res.status === 403) alert("Only Admins can delete tasks!");
+                }
+
+                // Realtime Listeners
+                socket.on("taskCreated", (task) => {
+                    const div = document.createElement("div")
+                    div.className = "card task-card p-3 shadow-sm";
+                    div.id = `task-${task._id}`;
+                    div.innerHTML = `
+                    <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <h5 class="mb-1">${task.title}</h5>
+                    <span class="badge bg-secondary">${task.priority} Priority</span>
+                    <span class="badge bg-info text-dark" id="status-badge-${task._id}">${task.status}</span>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <img src="${task.user ? task.user.avatar : '/uploads/default-avatar.png'}" class="avatar-img">
+                    <small class="text-muted">${task.user ? task.user.name : "Member"}</small>
+                </div>
+            </div>
+            <div class="mt-3 d-flex justify-content-between align-items-center border-top pt-2">
+                <select class="form-select form-select-sm w-auto" onchange="updateStatus('${task._id}', this.value)">
+                    <option value="Pending" selected>Pending</option>
+                    <option value="In Progress">In Progress</option>
+                    <option value="Completed">Completed</option>
+                </select>
+                ${'<%= user.role %>' === 'Admin' ? `<button class="btn btn-outline-danger btn-sm" onclick="deleteTask('${task._id}')">Delete</button>` : ''}
+            </div>
+                    `;
+                    taskContainer.prepend(div)
+                })
+
+                // Task Status Updated
+                socket.on("taskUpdated", (task) => {
+                    const badge = document.getElementById(`status-badge-${task._id}`)
+                    if (badge) badge.innerText = task.status
+                })
+
+                //  task deleted
+                socket.on("taskDeleted", (id) => {
+                    const taskCard = document.getElementById(`task-${id}`)
+                    if (taskCard) taskCard.remove();
+                })
+
+
+
+
+            </script>

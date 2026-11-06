@@ -1,4 +1,4 @@
-const Task = require("../model/Task");
+const Task = require("../models/Task");
 
 // 1. Create a Task (POST)
 exports.createTask = async (req, res) => {
@@ -10,7 +10,7 @@ exports.createTask = async (req, res) => {
         }
 
         // Support user from auth middleware (if present) or request body
-        const userId = req.user ? req.user._id : user;
+        const userId = req.user ? req.user._id : req.body.user;
         if (!userId) {
             return res.status(400).json({ success: false, message: "User ID is required" });
         }
@@ -18,13 +18,13 @@ exports.createTask = async (req, res) => {
         const task = await Task.create({
             title,
             priority,
-            user: req.user._id
+            user: userId
         });
 
 
         const populateTask = await Task.findById(task._id).populate("user", "name avatar")
 
-        const io = req.add.get("socketio");
+        const io = req.app.get("socketio");
         io.emit("taskCreated", populateTask)
 
         res.status(201).json({
@@ -90,8 +90,8 @@ exports.updateTask = async (req, res) => {
             });
         }
 
-        const io = req.add.get("socketio")
-        io.emit = ("taskUpdated", task)
+        const io = req.app.get("socketio")
+        io.emit("taskUpdated", task)
 
         res.status(200).json({
             success: true,
@@ -120,8 +120,8 @@ exports.deleteTask = async (req, res) => {
             });
         }
 
-        const io = req.add.get("socketio")
-        io.emit = ("taskDeleted", req.params.id)
+        const io = req.app.get("socketio")
+        io.emit("taskDeleted", req.params.id)
 
 
         res.status(200).json({

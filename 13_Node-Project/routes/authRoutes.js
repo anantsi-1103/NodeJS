@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
-const {registerUser,loginUser,logout} = require("../controllers/AuthController")
-const {protect} = require("../middlewares/authMiddleware")
+const {registerUser,loginUser,logout} = require("../controller/AuthController")
+const upload = require("../middlewares/uploadMiddleware")
 
 
 // middleware

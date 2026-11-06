@@ -4,7 +4,7 @@ const jwt = require("jsonwebtoken")
 
 
 const sendCookieToken = (user, statusCode, res, redirectURL = null) => {
-    const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_Secret, {
+    const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET || process.env.JWT_Secret, {
         expiresIn: "7d"
     });
 
@@ -33,7 +33,7 @@ const generateToken = (userID, role) => {
         {
             id: userID, role: role  // payload
         },
-        process.env.JWT_Secret, // secret key
+        process.env.JWT_SECRET || process.env.JWT_Secret, // secret key
         {
             expiresIn: process.env.JWT_EXPIRE || "30d"
         }
@@ -61,7 +61,7 @@ exports.registerUser = async (req, res) => {
         const token = generateToken(user._id, user.role)
     }
     catch (error) {
-        res.status(400).send("Error Registering : " + err.message)
+        res.status(400).send("Error Registering : " + error.message)
     }
 }
 
@@ -80,7 +80,7 @@ exports.loginUser = async (req, res) => {
         sendCookieToken(user, 200, res, "/dashboard");
     }
     catch (error) {
-        res.status(500).send("Error Logging in : " + err.message)
+        res.status(500).send("Error Logging in : " + error.message)
     }
 }
 
