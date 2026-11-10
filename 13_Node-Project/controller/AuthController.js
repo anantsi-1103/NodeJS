@@ -1,92 +1,116 @@
 const User = require("../models/User");
-const jwt = require("jsonwebtoken")
+const jwt = require("jsonwebtoken");
 
-
-
-const sendCookieToken = (user, statusCode, res, redirectURL = null) => {
-    const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET || process.env.JWT_Secret, {
-        expiresIn: "7d"
-    });
+const sendCookieToken = (user, statusCode, res, redirectURL = "/dashboard", req = null) => {
+    const token = jwt.sign(
+        { id: user._id, role: user.role },
+        process.env.JWT_SECRET || "taskpulse_super_secret_jwt_key_987654321",
+        { expiresIn: "7d" }
+    );
 
     res.cookie("token", token, {
-        httpOnly: true, // secure
-        maxAge: 1000 * 60 * 60 * 24 * 7
-    })
+        httpOnly: true,
+        maxAge: 1000 * 60 * 60 * 24 * 7 // 7 days
+    });
 
-    if (redirectURL) {
-        return res.redirect(redirectURL)
+    // If client expects JSON (e.g. Fetch API or Postman)
+    if (req && (req.xhr || req.headers["accept"]?.includes("application/json") || req.is("json"))) {
+        return res.status(statusCode).json({
+            success: true,
+            token,
+            user: {
+                _id: user._id,
+                name: user.name,
+                email: user.email,
+                role: user.role,
+                avatar: user.avatar
+            }
+        });
     }
 
-    res.status(statusCode).json({
-        success: true, user
-    });
-}
+    // Default for browser form submission
+    if (redirectURL) {
+        return res.redirect(redirectURL);
+    }
 
+    res.status(statusCode).json({ success: true, token, user });
+};
 
-
-
-
-
-// helper function to generate jwt token
-const generateToken = (userID, role) => {
-    return jwt.sign(
-        {
-            id: userID, role: role  // payload
-        },
-        process.env.JWT_SECRET || process.env.JWT_Secret, // secret key
-        {
-            expiresIn: process.env.JWT_EXPIRE || "30d"
-        }
-    )
-}
-
-// 1. Register User -> 
+// 1. Register User (POST /api/auth/register)
 exports.registerUser = async (req, res) => {
     try {
         const { name, email, password, role } = req.body;
 
-        // check if user already exist
-        const userExist = await User.findOne({ email }) // find user by id
+        if (!name || !email || !password) {
+            if (req.xhr || req.headers["accept"]?.includes("application/json") || req.is("json")) {
+                return res.status(400).json({ success: false, message: "Please provide all required fields" });
+            }
+            return res.status(400).send("Please fill in all fields. <a href='/register'>Try Again</a>");
+        }
+
+        const userExist = await User.findOne({ email });
         if (userExist) {
-            return res.status(400).send("User Already Exists. <a href='/login'> Login Here </a> ")
-
+            if (req.xhr || req.headers["accept"]?.includes("application/json") || req.is("json")) {
+                return res.status(400).json({ success: false, message: "User already exists with this email" });
+            }
+            return res.status(400).send("User Already Exists. <a href='/login'>Login Here</a>");
         }
 
-        const avatarPath = req.file ? `/uploads/${req.file.filename}` : "/uploads/default-avatar.png"
-        // create user -> (password will automatically hash ke threw convert hjojaega)
-        const user = await User.create({ name, email, password, role, avatar: avatarPath });
-        sendCookieToken(user, 201, res, "/dashboard")
+        const avatarPath = req.file ? `/uploads/${req.file.filename}` : "/uploads/default-avatar.png";
+        const user = await User.create({ name, email, password, role: role || "Member", avatar: avatarPath });
 
-        // generate token
-        const token = generateToken(user._id, user.role)
-    }
-    catch (error) {
-        res.status(400).send("Error Registering : " + error.message)
-    }
-}
-
-// 2. Login User
-exports.loginUser = async (req, res) => {
-    try {
-        const { email, password } = req.body
-
-        // Find User & Explicity select password -> schema select false
-        const user = await User.findOne({ email }).select("+password")
-
-        if (!user || !(await user.matchPassword(password))) {
-            return res.status(400).send("Invalid Email or Password. <a href='/login'> Try Again </a>")
-
+        sendCookieToken(user, 201, res, "/dashboard", req);
+    } catch (error) {
+        if (req.xhr || req.headers["accept"]?.includes("application/json") || req.is("json")) {
+            return res.status(400).json({ success: false, message: error.message });
         }
-        sendCookieToken(user, 200, res, "/dashboard");
+        res.status(400).send("Error Registering: " + error.message);
     }
-    catch (error) {
-        res.status(500).send("Error Logging in : " + error.message)
-    }
-}
-
-// Logout
-exports.logout = (req, res) => {
-    res.clearCookie("token");
-    res.redirect("/login");
 };
 
+// 2. Login User (POST /api/auth/login)
+exports.loginUser = async (req, res) => {
+    try {
+        const { email, password } = req.body;
+
+        if (!email || !password) {
+            if (req.xhr || req.headers["accept"]?.includes("application/json") || req.is("json")) {
+                return res.status(400).json({ success: false, message: "Please provide email and password" });
+            }
+            return res.status(400).send("Please provide email and password. <a href='/login'>Try Again</a>");
+        }
+
+        const user = await User.findOne({ email }).select("+password");
+
+        if (!user || !(await user.matchPassword(password))) {
+            if (req.xhr || req.headers["accept"]?.includes("application/json") || req.is("json")) {
+                return res.status(401).json({ success: false, message: "Invalid email or password" });
+            }
+            return res.status(401).send("Invalid Email or Password. <a href='/login'>Try Again</a>");
+        }
+
+        sendCookieToken(user, 200, res, "/dashboard", req);
+    } catch (error) {
+        if (req.xhr || req.headers["accept"]?.includes("application/json") || req.is("json")) {
+            return res.status(500).json({ success: false, message: error.message });
+        }
+        res.status(500).send("Error Logging in: " + error.message);
+    }
+};
+
+// 3. Get Current Logged In User (GET /api/auth/me)
+exports.getMe = async (req, res) => {
+    res.status(200).json({
+        success: true,
+        user: req.user
+    });
+};
+
+// 4. Logout User (GET /api/auth/logout)
+exports.logout = (req, res) => {
+    res.clearCookie("token");
+    if (req.xhr || req.headers["accept"]?.includes("application/json") || req.is("json")) {
+        return res.status(200).json({ success: true, message: "Logged out successfully" });
+    }
+    res.redirect("/login");
+};

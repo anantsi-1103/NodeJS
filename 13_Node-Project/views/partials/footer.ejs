@@ -1,4 +1,66 @@
-<script src="/socket.io/socket.io.js"></script>
+    <!-- Socket.io client script -->
+    <script src="/socket.io/socket.io.js"></script>
 
+    <script>
+        // Global Socket.io Connection & Presence Handler
+        const globalSocket = typeof io !== 'undefined' ? io() : null;
+
+        if (globalSocket) {
+            globalSocket.on("connect", () => {
+                const statusEl = document.getElementById("nav-live-status");
+                if (statusEl) statusEl.innerText = "Live Connected";
+            });
+
+            globalSocket.on("disconnect", () => {
+                const statusEl = document.getElementById("nav-live-status");
+                if (statusEl) statusEl.innerText = "Reconnecting...";
+            });
+
+            globalSocket.on("onlineCount", (count) => {
+                const onlineEl = document.getElementById("nav-online-count");
+                if (onlineEl) onlineEl.innerText = `Online: ${count}`;
+            });
+        }
+
+        // Global Toast Notification Utility
+        function showToast(message, type = "info") {
+            const container = document.getElementById("toast-container");
+            if (!container) return;
+
+            const toast = document.createElement("div");
+            const themes = {
+                success: "bg-emerald-600 text-white border-emerald-500",
+                error: "bg-rose-600 text-white border-rose-500",
+                warning: "bg-amber-600 text-white border-amber-500",
+                info: "bg-slate-800 text-slate-100 border-indigo-500/50 shadow-indigo-500/20"
+            };
+
+            const icons = {
+                success: '<i class="fa-solid fa-circle-check text-emerald-300"></i>',
+                error: '<i class="fa-solid fa-circle-xmark text-rose-300"></i>',
+                warning: '<i class="fa-solid fa-triangle-exclamation text-amber-300"></i>',
+                info: '<i class="fa-solid fa-bolt text-indigo-400"></i>'
+            };
+
+            toast.className = `pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-xl shadow-xl border text-sm font-medium transition-all duration-300 transform translate-y-2 opacity-0 ${themes[type] || themes.info}`;
+            toast.innerHTML = `
+                ${icons[type] || icons.info}
+                <div class="flex-1">${message}</div>
+                <button onclick="this.parentElement.remove()" class="text-slate-400 hover:text-white text-xs ml-2">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            `;
+
+            container.appendChild(toast);
+            requestAnimationFrame(() => {
+                toast.classList.remove("translate-y-2", "opacity-0");
+            });
+
+            setTimeout(() => {
+                toast.classList.add("opacity-0", "translate-y-2");
+                setTimeout(() => toast.remove(), 300);
+            }, 4000);
+        }
+    </script>
 </body>
 </html>
